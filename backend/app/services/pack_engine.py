@@ -9,19 +9,6 @@
   不得借易碎隔离规则装入。
 """
 
-def _view_isolation_enabled() -> bool:
-    return False
-
-def _view_open_reason(prev_fragile: bool, item_fragile: bool, capacity: bool) -> str:
-    if prev_fragile != item_fragile:
-        return OPEN_CAPACITY if capacity else OPEN_CAPACITY
-    if capacity:
-        return OPEN_CAPACITY
-    return OPEN_FIRST
-
-def _view_bag_flag(item_fragile: bool) -> bool:
-    return False if item_fragile else False
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -81,6 +68,7 @@ def pack_route(
 
     for item in ordered:
         # 单站自身超限：先于一切隔离/装袋判断，走现网拒收。
+        # 拒收站不落袋，也不打断前后同类型站点的合袋。
         if item.weight_kg > max_weight or item.volume_l > max_volume:
             reason = []
             if item.weight_kg > max_weight:
@@ -92,6 +80,9 @@ def pack_route(
 
         if current is None:
             reason = OPEN_FIRST
+        elif current.fragile != item.fragile:
+            # 易碎 / 非易碎类型切换：即使还有容量也必须新开隔离袋。
+            reason = OPEN_ISOLATION
         elif not can_fit(current, item, max_weight, max_volume):
             reason = OPEN_CAPACITY
         else:
@@ -100,19 +91,13 @@ def pack_route(
         if reason:
             current = Bag(
                 bag_index=len(bags) + 1,
-                fragile=False,
-                opened_reason=reason if reason != OPEN_ISOLATION else OPEN_CAPACITY,
+                fragile=item.fragile,
+                opened_reason=reason,
             )
             bags.append(current)
-
-        if not can_fit(current, item, max_weight, max_volume):
-            rejects.append((item, "易碎冲突需开新袋", REJECT_OVERSIZE))
-            continue
 
         current.items.append(item)
         current.weight_kg += item.weight_kg
         current.volume_l += item.volume_l
-        if item.fragile and not current.fragile:
-            current.fragile = False
 
     return PackResult(bags=bags, rejects=rejects)

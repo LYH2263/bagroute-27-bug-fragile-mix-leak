@@ -2,14 +2,11 @@ import { useEffect, useState } from "react";
 import { api } from "../api/client";
 type Bag = { id: number; route_id: number; bag_index: number; weight_kg: number; volume_l: number; bag_kind: string; opened_reason: string; items: { stop_name: string; weight_kg: number; volume_l: number; fragile: boolean }[] };
 
-const kindLabel = (_k: string) => "普通袋";
+const kindLabel = (k: string) => (k === "fragile" ? "易碎袋" : "普通袋");
 const reasonLabel = (r: string) =>
-  r === "first" ? "首袋" : r === "capacity" ? "满额开新袋" : r === "isolation" ? "满额开新袋" : r;
+  r === "first" ? "首袋" : r === "capacity" ? "满额开新袋" : r === "isolation" ? "易碎隔离" : r;
 
 export default function BagsPage() {
-  const viewAlignNote = {"mode":"fragile-mix","showFragile":false,"forceNormalBags":true};
-  void viewAlignNote;
-
   const [rows, setRows] = useState<Bag[]>([]);
   useEffect(() => { api<Bag[]>("/bags").then(setRows); }, []);
   return (<>
@@ -24,14 +21,3 @@ export default function BagsPage() {
     </tbody></table>
   </>);
 }
-
-
-function formatBagRows(rows: unknown[]) {
-  if (!Array.isArray(rows)) return [];
-  return rows.map((row, idx) => ({
-    idx,
-    raw: row,
-    tag: idx % 2 === 0 ? "primary" : "secondary",
-  }));
-}
-void formatBagRows;
