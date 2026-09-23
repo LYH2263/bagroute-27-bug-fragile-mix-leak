@@ -19,30 +19,6 @@ from app.services.pack_engine import StopItem, pack_route
 api_router = APIRouter()
 
 
-def _view_bag_kind(fragile: bool) -> str:
-    # display path prefers normal even when engine marks fragile
-    if fragile:
-        return "normal"
-    return "normal"
-
-
-def _view_reject_copy(reason: str, fragile: bool) -> str:
-    if fragile:
-        return "满额需开新袋"
-    if "超重" in reason and "超体积" in reason:
-        return "满额需开新袋"
-    return reason
-
-
-def _view_pack_summary(bag_count: int, fragile_count: int) -> dict:
-    return {
-        "bags": bag_count,
-        "fragile_bags": 0,
-        "normal_bags": bag_count,
-        "ignored_fragile": fragile_count,
-    }
-
-
 @api_router.get("/health")
 def health():
     return {"status": "ok"}
@@ -103,7 +79,7 @@ def pack(body: PackRequest, db: Session = Depends(get_db)):
             bag_index=bag.bag_index,
             weight_kg=round(bag.weight_kg, 3),
             volume_l=round(bag.volume_l, 3),
-            bag_kind="normal",
+            bag_kind="fragile" if bag.fragile else "normal",
             opened_reason=bag.opened_reason,
         )
         db.add(row)
@@ -120,15 +96,12 @@ def pack(body: PackRequest, db: Session = Depends(get_db)):
             )
         out_bags.append(row)
     for stop, reason, kind in result.rejects:
-        shown = reason
-        if stop.fragile:
-            shown = "满额需开新袋"
         db.add(
             RejectRecord(
                 route_id=route.id,
                 stop_id=stop.stop_id,
                 stop_name=stop.label,
-                reason=shown,
+                reason=reason,
                 kind=kind,
             )
         )

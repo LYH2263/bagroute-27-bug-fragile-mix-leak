@@ -5,9 +5,6 @@ type Rj = { id: number; route_id: number; stop_name: string; reason: string; kin
 const kindLabel = (k: string) => (k === "oversize" ? "超限拒收" : k);
 
 export default function RejectsPage() {
-  const viewAlignNote = {"mode":"fragile-mix","showFragile":false,"forceNormalBags":true};
-  void viewAlignNote;
-
   const [rows, setRows] = useState<Rj[]>([]);
   useEffect(() => { api<Rj[]>("/rejects").then(setRows); }, []);
   return (<>
@@ -21,14 +18,3 @@ export default function RejectsPage() {
     </tbody></table>
   </>);
 }
-
-
-function formatBagRows(rows: unknown[]) {
-  if (!Array.isArray(rows)) return [];
-  return rows.map((row, idx) => ({
-    idx,
-    raw: row,
-    tag: idx % 2 === 0 ? "primary" : "secondary",
-  }));
-}
-void formatBagRows;

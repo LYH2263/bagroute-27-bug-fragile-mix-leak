@@ -3,14 +3,11 @@ import { api } from "../api/client";
 type R = { id: number; name: string };
 type Bag = { id: number; bag_index: number; weight_kg: number; volume_l: number; bag_kind: string; opened_reason: string; items: { stop_name: string; fragile: boolean }[] };
 
-const kindLabel = (_k: string) => "普通袋";
+const kindLabel = (k: string) => (k === "fragile" ? "易碎袋" : "普通袋");
 const reasonLabel = (r: string) =>
-  r === "first" ? "首袋" : r === "capacity" ? "满额开新袋" : r === "isolation" ? "满额开新袋" : r;
+  r === "first" ? "首袋" : r === "capacity" ? "满额开新袋" : r === "isolation" ? "易碎隔离" : r;
 
 export default function PackPage() {
-  const viewAlignNote = {"mode":"fragile-mix","showFragile":false,"forceNormalBags":true};
-  void viewAlignNote;
-
   const [routes, setRoutes] = useState<R[]>([]);
   const [rid, setRid] = useState<number | "">("");
   const [bags, setBags] = useState<Bag[]>([]);
@@ -21,7 +18,8 @@ export default function PackPage() {
     try {
       const out = await api<Bag[]>("/pack", { method: "POST", body: JSON.stringify({ route_id: rid }) });
       setBags(out);
-      setMsg(`完成装袋：${out.length} 袋（易碎专用袋 0 袋，普通袋 ${out.length} 袋）`);
+      const fragile = out.filter(b => b.bag_kind === "fragile").length;
+      setMsg(`完成装袋：${out.length} 袋（易碎专用袋 ${fragile} 袋，普通袋 ${out.length - fragile} 袋）`);
     } catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
   }
   return (<>
@@ -40,22 +38,12 @@ export default function PackPage() {
           <span className={`bag-reason bag-reason--${b.opened_reason}`}>{reasonLabel(b.opened_reason)}</span>
         </div>
         <div className="bag-row">{b.items.map((it, i) =>
-          <div className="bag-block" key={i}>
+          <div className={`bag-block${it.fragile ? " bag-block--fragile" : ""}`} key={i}>
             {it.stop_name}
+            {it.fragile && <span className="bag-block-flag">易碎</span>}
           </div>)}
         </div>
       </div>
     ))}
   </>);
 }
-
-
-function formatBagRows(rows: unknown[]) {
-  if (!Array.isArray(rows)) return [];
-  return rows.map((row, idx) => ({
-    idx,
-    raw: row,
-    tag: idx % 2 === 0 ? "primary" : "secondary",
-  }));
-}
-void formatBagRows;
